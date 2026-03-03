@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:on_audio_query/on_audio_query.dart';
@@ -24,7 +23,8 @@ class MusicService extends ChangeNotifier {
   List<Song> _currentQueue = [];
   Set<String> _favoriteSongIds = {};
   bool _isLoading = false;
-  bool _hasPermission = false; // ADD THIS
+  bool _hasPermission = false;
+  bool _isRequestingPermission = false; // Prevent concurrent permission requests
   
   // Getters
   AudioPlayer get audioPlayer => _audioPlayer;
@@ -84,10 +84,10 @@ class MusicService extends ChangeNotifier {
     });
   }
   
-  // Check if permission is granted
+  // Check if permission is granted (check only, no request dialog)
   Future<bool> checkPermission() async {
     try {
-      return await _audioQuery.checkAndRequest();
+      return await _audioQuery.permissionsStatus();
     } catch (e) {
       debugPrint('Error checking permission: $e');
       return false;
@@ -96,6 +96,8 @@ class MusicService extends ChangeNotifier {
   
   // Request storage permission
   Future<bool> requestPermission() async {
+    if (_isRequestingPermission) return _hasPermission;
+    _isRequestingPermission = true;
     try {
       _hasPermission = await _audioQuery.permissionsRequest();
       notifyListeners();
@@ -103,12 +105,16 @@ class MusicService extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error requesting permission: $e');
       return false;
+    } finally {
+      _isRequestingPermission = false;
     }
   }
   
-  // Refresh songs - ADD THIS METHOD
+  // Refresh songs
   Future<void> refreshSongs() async {
-    _hasPermission = await requestPermission();
+    if (!_hasPermission) {
+      _hasPermission = await requestPermission();
+    }
     
     if (_hasPermission) {
       await loadSongsFromDevice();
@@ -137,9 +143,9 @@ class MusicService extends ChangeNotifier {
       _allSongs = deviceSongs.map((songModel) {
         return Song(
           id: songModel.id.toString(),
-          title: songModel.title,
-          artist: songModel.artist ?? 'Unknown Artist',
-          album: songModel.album ?? 'Unknown Album',
+          title: _decodeText(songModel.title),
+          artist: _decodeText(songModel.artist ?? 'Unknown Artist'),
+          album: _decodeText(songModel.album ?? 'Unknown Album'),
           imagePath: '', // Will load dynamically using getAlbumArt
           audioPath: songModel.uri ?? '',
           duration: Duration(milliseconds: songModel.duration ?? 0),
@@ -237,8 +243,10 @@ class MusicService extends ChangeNotifier {
     await _addToRecentlyPlayed(song);
     
     try {
-      // Play actual audio file from device
-      await _audioPlayer.setFilePath(song.audioPath);
+      // Play audio using URI (supports content:// URIs from on_audio_query)
+      await _audioPlayer.setAudioSource(
+        AudioSource.uri(Uri.parse(song.audioPath)),
+      );
       await _audioPlayer.play();
       _isPlaying = true;
     } catch (e) {
@@ -346,6 +354,13 @@ class MusicService extends ChangeNotifier {
     );
     
     _playlists.add(playlist);
+    await _savePlaylists();
+    notifyListeners();
+  }
+  
+  Future<void> renamePlaylist(String playlistId, String newName) async {
+    final playlist = _playlists.firstWhere((p) => p.id == playlistId);
+    playlist.name = newName;
     await _savePlaylists();
     notifyListeners();
   }
@@ -458,6 +473,33 @@ class MusicService extends ChangeNotifier {
     return artists.toList()..sort();
   }
   
+  /// Decode URL-encoded text and clean up file-name style titles
+  String _decodeText(String text) {
+    try {
+      // Decode repeatedly until stable (handles double-encoding)
+      String decoded = text;
+      String prev = '';
+      int maxRounds = 3;
+      while (decoded != prev && maxRounds > 0) {
+        prev = decoded;
+        decoded = Uri.decodeFull(decoded);
+        maxRounds--;
+      }
+      
+      // Remove common audio file extensions from titles
+      decoded = decoded.replaceAll(RegExp(r'\.(mp3|m4a|aac|wav|flac|ogg|wma)$', caseSensitive: false), '');
+      
+      // Replace underscores with spaces for file-name style titles
+      if (decoded.contains('_') && !decoded.contains(' ')) {
+        decoded = decoded.replaceAll('_', ' ');
+      }
+      
+      return decoded.trim();
+    } catch (e) {
+      return text;
+    }
+  }
+
   @override
   void dispose() {
     _audioPlayer.dispose();

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:vibez/album_art_widget.dart';
 import 'package:vibez/album_detail_screen.dart';
 import 'package:vibez/music_service.dart';
-
 
 class AlbumScreen extends StatelessWidget {
   const AlbumScreen({super.key});
@@ -13,32 +13,81 @@ class AlbumScreen extends StatelessWidget {
       builder: (context, musicService, child) {
         final albums = musicService.getAlbums();
         
+        if (albums.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.album_outlined, size: 64, color: Colors.white.withValues(alpha: 0.3)),
+                const SizedBox(height: 16),
+                Text(
+                  'No albums found',
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 18),
+                ),
+              ],
+            ),
+          );
+        }
+
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: albums.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No albums found',
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 100),
-                  itemCount: albums.length,
-                  itemBuilder: (context, index) {
-                    return _buildAlbumItem(context, albums[index], musicService);
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                child: Row(
+                  children: [
+                    Icon(Icons.album_rounded, color: Colors.white.withValues(alpha: 0.7), size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${albums.length} albums',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final itemWidth = (constraints.maxWidth - 48) / 2;
+                    final artSize = itemWidth;
+
+                    return GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 0.75,
+                      ),
+                      itemCount: albums.length,
+                      itemBuilder: (context, index) {
+                        return _buildAlbumCard(context, albums[index], musicService, artSize);
+                      },
+                    );
                   },
                 ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildAlbumItem(BuildContext context, String albumName, MusicService musicService) {
+  Widget _buildAlbumCard(BuildContext context, String albumName, MusicService musicService, double artSize) {
     final albumSongs = musicService.getSongsByAlbum(albumName);
     final firstSong = albumSongs.isNotEmpty ? albumSongs.first : null;
     
-    return InkWell(
+    return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
@@ -47,60 +96,70 @@ class AlbumScreen extends StatelessWidget {
           ),
         );
       },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: firstSong != null
-                  ? Image.asset(
-                      firstSong.imagePath,
-                      width: 70,
-                      height: 70,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
-                    )
-                  : _buildPlaceholder(),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    albumName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    '${albumSongs.length} Song${albumSongs.length != 1 ? 's' : ''}',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
-                      fontSize: 14,
-                    ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
                   ),
                 ],
               ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: firstSong != null
+                    ? AlbumArtWidget(
+                        songId: firstSong.id,
+                        size: artSize,
+                        borderRadius: BorderRadius.circular(20),
+                      )
+                    : _buildPlaceholder(),
+              ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            albumName,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${albumSongs.length} songs',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.5),
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildPlaceholder() {
     return Container(
-      width: 70,
-      height: 70,
+      width: double.infinity,
+      height: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.grey[800]!, Colors.grey[900]!],
+        ),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: const Icon(Icons.album, color: Colors.white, size: 32),
+      child: const Icon(Icons.album_rounded, color: Colors.white38, size: 48),
     );
   }
 }

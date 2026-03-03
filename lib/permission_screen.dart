@@ -1,44 +1,64 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:vibez/home.dart';
 import 'package:vibez/music_service.dart';
-
 
 class PermissionScreen extends StatelessWidget {
   const PermissionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Consumer<MusicService>(
       builder: (context, musicService, child) {
         // If loading, show loading screen
         if (musicService.isLoading) {
           return Scaffold(
             body: Container(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                   colors: [
-                    const Color(0xFF400C04),
-                    const Color(0xFFC02323),
-                    const Color(0xFF984652),
-                    const Color(0xFF96929E),
+                    Color(0xFF1A0005),
+                    Color(0xFF400C04),
+                    Color(0xFF2D1B36),
+                    Color(0xFF0D0D1A),
                   ],
-                  stops: const [0.05, 0.30, 0.60, 1.0],
                 ),
               ),
-              child: const Center(
+              child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(color: Colors.white),
-                    SizedBox(height: 20),
-                    Text(
-                      'Loading music...',
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const CircularProgressIndicator(
+                        color: Color(0xFFFF6B6B),
+                        strokeWidth: 3,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    const Text(
+                      'Loading your music...',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This may take a moment',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 14,
                       ),
                     ),
                   ],
@@ -62,93 +82,154 @@ class PermissionScreen extends StatelessWidget {
         // Show permission request screen
         return Scaffold(
           body: Container(
-            decoration: BoxDecoration(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
                 colors: [
-                  const Color(0xFF400C04),
-                  const Color(0xFFC02323),
-                  const Color(0xFF984652),
-                  const Color(0xFF96929E),
+                  Color(0xFF1A0005),
+                  Color(0xFF400C04),
+                  Color(0xFF2D1B36),
+                  Color(0xFF0D0D1A),
                 ],
-                stops: const [0.05, 0.30, 0.60, 1.0],
               ),
             ),
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.symmetric(horizontal: 40),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.music_note,
-                      size: 120,
-                      color: Colors.white,
+                    SizedBox(height: screenHeight * 0.12),
+
+                    // Logo icon with glow
+                    Container(
+                      padding: const EdgeInsets.all(28),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFFFF6B6B).withValues(alpha: 0.15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF6B6B).withValues(alpha: 0.15),
+                            blurRadius: 60,
+                            spreadRadius: 20,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.headphones_rounded,
+                        size: 64,
+                        color: Color(0xFFFF6B6B),
+                      ),
                     ),
+
                     const SizedBox(height: 40),
+
                     const Text(
                       'Vibez',
                       style: TextStyle(
                         fontSize: 48,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
+                        fontFamily: 'Knewave',
                         letterSpacing: 2,
                       ),
                     ),
-                    const SizedBox(height: 60),
-                    const Text(
-                      'Storage Permission Required',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 24,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+
+                    const SizedBox(height: 8),
                     Text(
-                      'Vibez needs permission to access your music files to play them.',
-                      textAlign: TextAlign.center,
+                      'Feel the rhythm',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: 3,
                       ),
                     ),
-                    const SizedBox(height: 60),
-                    ElevatedButton(
-                      onPressed: () async {
-                        // The service will handle permission request
-                        await musicService.refreshSongs();
-                        
-                        if (musicService.hasPermission) {
-                          if (context.mounted) {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (context) => const HomePage()),
-                            );
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFFC02323),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 48,
-                          vertical: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: const Text(
-                        'Grant Permission',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+
+                    const Spacer(),
+
+                    // Permission card
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          padding: const EdgeInsets.all(28),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.folder_open_rounded,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  size: 36),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Storage Access',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Vibez needs to access your music files to play them.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  height: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 28),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 52,
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    await musicService.refreshSongs();
+                                    if (musicService.hasPermission) {
+                                      if (context.mounted) {
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const HomePage()),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFF6B6B),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Grant Permission',
+                                    style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
+
+                    SizedBox(height: screenHeight * 0.08),
                   ],
                 ),
               ),

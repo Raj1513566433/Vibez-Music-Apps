@@ -1,9 +1,11 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:vibez/album_art_widget.dart';
+import 'package:vibez/mini_player.dart';
 import 'package:vibez/music_service.dart';
 import 'package:vibez/player_screen.dart';
 import 'package:vibez/song.dart';
-
 
 class PlaylistDetailScreen extends StatefulWidget {
   final String playlistId;
@@ -41,22 +43,23 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       builder: (context, musicService, child) {
         final playlistSongs = musicService.getPlaylistSongs(widget.playlistId);
         final isSystemPlaylist = widget.playlistId == 'recently' || 
-                                widget.playlistId == 'lyrics';
+                                widget.playlistId == 'lyrics' ||
+                                widget.playlistId == 'favorites';
         final canAddSongs = !isSystemPlaylist;
 
         return Scaffold(
           body: Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  const Color(0xFF400C04),
-                  const Color(0xFFC02323),
-                  const Color(0xFF984652),
-                  const Color(0xFF96929E),
+                  Color(0xFF400C04),
+                  Color(0xFFC02323),
+                  Color(0xFF984652),
+                  Color(0xFF96929E),
                 ],
-                stops: const [0.05, 0.30, 0.60, 1.0],
+                stops: [0.05, 0.30, 0.60, 1.0],
               ),
             ),
             child: SafeArea(
@@ -68,8 +71,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                         ? _buildAddMusicView(musicService)
                         : _buildPlaylistView(playlistSongs, musicService, canAddSongs),
                   ),
-                  if (musicService.currentSong != null)
-                    _buildBottomPlayer(musicService),
+                  const MiniPlayer(),
                 ],
               ),
             ),
@@ -81,11 +83,11 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
 
   Widget _buildHeader(BuildContext context, MusicService musicService) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+            icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 24),
             onPressed: () {
               if (_isAddMusicMode) {
                 setState(() {
@@ -110,7 +112,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
           ),
           if (_isAddMusicMode)
             IconButton(
-              icon: const Icon(Icons.check, color: Colors.white, size: 28),
+              icon: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 28),
               onPressed: () {
                 if (_selectedSongs.isNotEmpty) {
                   musicService.addSongsToPlaylist(
@@ -123,14 +125,14 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                     _selectAll = false;
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Added ${_selectedSongs.length} songs')),
+                    SnackBar(content: Text('Added ${_selectedSongs.length} songs to ${widget.playlistName}')),
                   );
                 }
               },
             )
-          else
+          else if (!isSystemPlaylistHeader(widget.playlistId))
             IconButton(
-              icon: const Icon(Icons.more_vert, color: Colors.white, size: 28),
+              icon: const Icon(Icons.more_horiz_rounded, color: Colors.white, size: 28),
               onPressed: () => _showPlaylistOptions(context, musicService),
             ),
         ],
@@ -138,51 +140,55 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     );
   }
 
-  void _showPlaylistOptions(BuildContext context, MusicService musicService) {
-    final isSystemPlaylist = widget.playlistId == 'recently' || 
-                            widget.playlistId == 'lyrics' ||
-                            widget.playlistId == 'favorites';
+  bool isSystemPlaylistHeader(String id) {
+    return id == 'recently' || id == 'lyrics' || id == 'favorites';
+  }
 
+  void _showPlaylistOptions(BuildContext context, MusicService musicService) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.95),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[600],
-                borderRadius: BorderRadius.circular(2),
-              ),
+      builder: (context) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.85),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            if (!isSystemPlaylist) ...[
-              ListTile(
-                leading: const Icon(Icons.edit, color: Colors.white),
-                title: const Text('Rename playlist', style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showRenameDialog(context, musicService);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete playlist', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showDeleteConfirmation(context, musicService);
-                },
-              ),
-            ],
-            const SizedBox(height: 20),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[600],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.edit_rounded, color: Colors.white70),
+                  title: const Text('Rename Playlist', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showRenameDialog(context, musicService);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFFF6B6B)),
+                  title: const Text('Delete Playlist', style: TextStyle(color: Color(0xFFFF6B6B))),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showDeleteConfirmation(context, musicService);
+                  },
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -195,62 +201,65 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2A2A2A),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Rename Playlist',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A2E).withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: controller,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.grey[800],
-                  hintText: 'Playlist name',
-                  hintStyle: TextStyle(color: Colors.grey[500]),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel', style: TextStyle(color: Colors.white)),
+                  const Text(
+                    'Rename Playlist',
+                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                   ),
-                  TextButton(
-                    onPressed: () {
-                      if (controller.text.isNotEmpty) {
-                        final playlist = musicService.getPlaylistById(widget.playlistId);
-                        if (playlist != null) {
-                          playlist.name = controller.text;
-                          Navigator.pop(context);
-                          setState(() {});
-                        }
-                      }
-                    },
-                    child: const Text('Rename', style: TextStyle(color: Colors.red)),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: controller,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.1),
+                      hintText: 'New Playlist name',
+                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text('Cancel', style: TextStyle(color: Colors.white.withValues(alpha: 0.6))),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (controller.text.isNotEmpty) {
+                            musicService.renamePlaylist(widget.playlistId, controller.text);
+                            Navigator.pop(context);
+                            setState(() {});
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF6B6B).withValues(alpha: 0.9),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Rename'),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -261,12 +270,9 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A2A),
+        backgroundColor: const Color(0xFF1A1A2E),
         title: const Text('Delete Playlist', style: TextStyle(color: Colors.white)),
-        content: Text(
-          'Are you sure you want to delete "${widget.playlistName}"?',
-          style: const TextStyle(color: Colors.white),
-        ),
+        content: Text('Are you sure you want to delete "${widget.playlistName}"?', style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -278,7 +284,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
               Navigator.pop(context);
               Navigator.pop(context);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: Color(0xFFFF6B6B))),
           ),
         ],
       ),
@@ -288,81 +294,67 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   Widget _buildPlaylistView(List<Song> songs, MusicService musicService, bool canAddSongs) {
     return Column(
       children: [
-        // Playlist Icon
+        // Playlist Header Art
         Container(
-          margin: const EdgeInsets.symmetric(vertical: 30),
-          width: 200,
-          height: 200,
+          margin: const EdgeInsets.symmetric(vertical: 24),
+          width: 180,
+          height: 180,
           decoration: BoxDecoration(
-            color: const Color(0xFF1E3A5F),
             borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 30,
+                offset: const Offset(0, 15),
+              ),
+            ],
           ),
-          child: _buildPlaylistIcon(),
+          child: _buildPlaylistArt(songs),
         ),
         
-        // Playlist Name
         Text(
           widget.playlistName,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
         ),
-        
+        const SizedBox(height: 4),
         Text(
-          '${songs.length} Song${songs.length != 1 ? 's' : ''}',
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.6),
-            fontSize: 16,
-          ),
+          '${songs.length} songs',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 16),
         ),
         
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         
-        // Add Music Button
         if (canAddSongs)
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _isAddMusicMode = true;
-              });
-            },
+          ElevatedButton.icon(
+            onPressed: () => setState(() => _isAddMusicMode = true),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add Songs'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white.withOpacity(0.2),
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(25),
-              ),
-            ),
-            child: const Text(
-              'Add Music',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
             ),
           ),
         
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         
-        // Songs List
-        if (songs.isNotEmpty)
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                children: [
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                if (songs.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                     child: Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.play_circle, color: Colors.white, size: 36),
+                          icon: const Icon(Icons.play_circle_fill_rounded, color: Color(0xFFFF6B6B), size: 48),
                           onPressed: () {
                             if (songs.isNotEmpty) {
                               musicService.playSong(songs[0], queue: songs);
@@ -371,7 +363,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.shuffle, color: Colors.white, size: 28),
+                          icon: Icon(Icons.shuffle_rounded, color: Colors.white.withValues(alpha: 0.7), size: 28),
                           onPressed: () {
                             musicService.toggleShuffle();
                             if (songs.isNotEmpty) {
@@ -382,70 +374,44 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                       ],
                     ),
                   ),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 100),
-                      itemCount: songs.length,
-                      itemBuilder: (context, index) {
-                        return _buildSongItem(songs[index], musicService, false);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          const Expanded(
-            child: Center(
-              child: Text(
-                'No songs in this playlist',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
+                Expanded(
+                  child: songs.isNotEmpty
+                      ? ListView.builder(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          itemCount: songs.length,
+                          itemBuilder: (context, index) => _buildSongItem(songs[index], musicService, false),
+                        )
+                      : Center(child: Text('Playlist is empty', style: TextStyle(color: Colors.white.withValues(alpha: 0.4)))),
                 ),
-              ),
+              ],
             ),
           ),
+        ),
       ],
     );
   }
 
-  Widget _buildPlaylistIcon() {
-    IconData icon;
-    
-    switch (widget.playlistId) {
-      case 'favorites':
-        icon = Icons.favorite;
-        break;
-      case 'recently':
-        icon = Icons.history;
-        break;
-      case 'lyrics':
-        icon = Icons.lyrics;
-        break;
-      default:
-        icon = Icons.playlist_play;
+  Widget _buildPlaylistArt(List<Song> songs) {
+    if (widget.playlistId == 'favorites') {
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(colors: [Color(0xFFFF6B6B), Color(0xFFE91E63)]),
+        ),
+        child: const Icon(Icons.favorite_rounded, size: 80, color: Colors.white),
+      );
     }
     
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(30),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.pink,
-              Colors.blue,
-              Colors.purple,
-              Colors.orange,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Icon(icon, size: 100, color: Colors.white),
+    if (songs.isNotEmpty) {
+      return AlbumArtWidget(songId: songs.first.id, size: 180, borderRadius: BorderRadius.circular(24));
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: Colors.white.withValues(alpha: 0.1),
       ),
+      child: const Icon(Icons.library_music_rounded, size: 80, color: Colors.white24),
     );
   }
 
@@ -453,9 +419,9 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     final allSongs = musicService.allSongs;
     
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -463,41 +429,23 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Select All',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () => _toggleSelectAll(allSongs),
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      color: _selectAll ? Colors.white : Colors.transparent,
-                    ),
-                    child: _selectAll
-                        ? const Icon(Icons.check, size: 16, color: Colors.black)
-                        : null,
-                  ),
+                Text('${_selectedSongs.length} selected', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                TextButton.icon(
+                  onPressed: () => _toggleSelectAll(allSongs),
+                  icon: Icon(_selectAll ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded),
+                  label: const Text('Select All'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.white70),
                 ),
               ],
             ),
           ),
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 100),
+              padding: const EdgeInsets.only(bottom: 20),
               itemCount: allSongs.length,
-              itemBuilder: (context, index) {
-                return _buildSongItem(allSongs[index], musicService, true);
-              },
+              itemBuilder: (context, index) => _buildSongItem(allSongs[index], musicService, true),
             ),
           ),
         ],
@@ -507,102 +455,76 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
 
   Widget _buildSongItem(Song song, MusicService musicService, bool showCheckbox) {
     final isSelected = _selectedSongs.contains(song.id);
+    final isCurrentSong = musicService.currentSong?.id == song.id;
     
-    return InkWell(
-      onTap: () {
-        if (showCheckbox) {
-          setState(() {
-            if (isSelected) {
-              _selectedSongs.remove(song.id);
-            } else {
-              _selectedSongs.add(song.id);
-            }
-            _selectAll = _selectedSongs.length == musicService.allSongs.length;
-          });
-        } else {
-          musicService.playSong(song);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const PlayerScreen(),
-            ),
-          );
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                song.imagePath,
-                width: 50,
-                height: 50,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 50,
-                  height: 50,
-                  color: Colors.grey[800],
-                  child: const Icon(Icons.music_note, color: Colors.white, size: 24),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          if (showCheckbox) {
+            setState(() {
+              if (isSelected) {
+                _selectedSongs.remove(song.id);
+              } else {
+                _selectedSongs.add(song.id);
+              }
+              _selectAll = _selectedSongs.length == musicService.allSongs.length;
+            });
+          } else {
+            musicService.playSong(song);
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const PlayerScreen()));
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isCurrentSong ? Colors.white.withValues(alpha: 0.12) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              AlbumArtWidget(songId: song.id, size: 48, borderRadius: BorderRadius.circular(8)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      song.title,
+                      style: TextStyle(color: isCurrentSong ? const Color(0xFFFF6B6B) : Colors.white, fontSize: 16, fontWeight: isCurrentSong ? FontWeight.bold : FontWeight.w500),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(song.artist, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    song.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    song.artist,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (showCheckbox)
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if (isSelected) {
-                      _selectedSongs.remove(song.id);
-                    } else {
-                      _selectedSongs.add(song.id);
-                    }
-                    _selectAll = _selectedSongs.length == musicService.allSongs.length;
-                  });
-                },
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    color: isSelected ? Colors.white : Colors.transparent,
-                  ),
-                  child: isSelected
-                      ? const Icon(Icons.check, size: 16, color: Colors.black)
-                      : null,
+              if (showCheckbox)
+                Checkbox(
+                  value: isSelected,
+                  onChanged: (val) {
+                    setState(() {
+                      if (val == true) {
+                        _selectedSongs.add(song.id);
+                      } else {
+                        _selectedSongs.remove(song.id);
+                      }
+                      _selectAll = _selectedSongs.length == musicService.allSongs.length;
+                    });
+                  },
+                  activeColor: const Color(0xFFFF6B6B),
+                  side: const BorderSide(color: Colors.white54),
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.more_vert_rounded, color: Colors.white54),
+                  onPressed: () => _showSongOptions(context, song, musicService),
                 ),
-              )
-            else
-              IconButton(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                onPressed: () {
-                  _showSongOptions(context, song, musicService);
-                },
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -612,114 +534,36 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.95),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[600],
-                borderRadius: BorderRadius.circular(2),
-              ),
+      builder: (context) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.85),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            ListTile(
-              leading: const Icon(Icons.remove_circle_outline, color: Colors.red),
-              title: const Text('Remove from playlist', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                musicService.removeSongFromPlaylist(widget.playlistId, song.id);
-                Navigator.pop(context);
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomPlayer(MusicService musicService) {
-    final song = musicService.currentSong!;
-    
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const PlayerScreen(),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [
-              const Color(0xFFFA0B0B),
-              const Color(0xFFFBBF00),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(50),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.red, width: 3),
-              ),
-              child: ClipOval(
-                child: Image.asset(
-                  song.imagePath,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.grey[800],
-                    child: const Icon(Icons.music_note, color: Colors.white),
-                  ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: Colors.grey[600], borderRadius: BorderRadius.circular(2)),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                song.title,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                ListTile(
+                  leading: const Icon(Icons.remove_circle_outline_rounded, color: Color(0xFFFF6B6B)),
+                  title: const Text('Remove from Playlist', style: TextStyle(color: Color(0xFFFF6B6B))),
+                  onTap: () {
+                    musicService.removeSongFromPlaylist(widget.playlistId, song.id);
+                    Navigator.pop(context);
+                  },
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+                const SizedBox(height: 20),
+              ],
             ),
-            IconButton(
-              icon: Icon(
-                musicService.isPlaying ? Icons.pause : Icons.play_arrow,
-                color: Colors.black,
-                size: 32,
-              ),
-              onPressed: () {
-                musicService.togglePlayPause();
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.skip_next, color: Colors.black, size: 24),
-              onPressed: () {
-                musicService.playNext();
-              },
-            ),
-          ],
+          ),
         ),
       ),
     );

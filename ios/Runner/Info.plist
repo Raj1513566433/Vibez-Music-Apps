@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>This app needs access to your music library to play your songs.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library to show album arts.</string>
 </dict>
 </plist>
